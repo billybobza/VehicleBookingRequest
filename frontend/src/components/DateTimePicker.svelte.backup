@@ -1,0 +1,407 @@
+<script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+  import ErrorMessage from './ErrorMessage.svelte';
+
+  // Props
+  export let startDateTime: string = '';
+  export let duration: string = '';
+  export let disabled: boolean = false;
+
+  // State
+  let startDate: string = '';
+  let startTime: string = '';
+  let endDateTime: string = '';
+  let returnDateTime: string = '';
+  let errors: string[] = [];
+
+  // Duration options
+  const durationOptions = [
+    { value: '', label: 'Select duration' },
+    { value: '1h', label: '1 hour' },
+    { value: '4h', label: '4 hours' },
+    { value: '1d', label: '1 day' },
+    { value: '2d', label: '2 days' },
+    { value: '1w', label: '1 week' },
+    { value: '2w', label: '2 weeks' },
+    { value: '3w', label: '3 weeks' },
+    { value: '1m', label: '1 month' },
+  ];
+
+  // Event dispatcher
+  const dispatch = createEventDispatcher<{
+    dateTimeChanged: {
+      startDateTime: string;
+      endDateTime: string;
+      returnDateTime: string;
+      duration: string;
+    };
+  }>();
+
+  // Initialize from props only once on mount
+  function initializeFromProps() {
+    if (startDateTime && !startDate && !startTime) {
+      const dt = new Date(startDateTime);
+      startDate = dt.toISOString().split('T')[0];
+      startTime = dt.toTimeString().slice(0, 5);
+    }
+  }
+  
+  // Call initialization
+  initializeFromProps();
+
+  // Reactive calculations
+  $: {
+    if (startDate && startTime && duration) {
+      calculateEndAndReturnDates();
+    } else {
+      endDateTime = '';
+      returnDateTime = '';
+    }
+  }
+
+  // Validate inputs
+  $: {
+    validateInputs();
+  }
+
+  function calculateEndAndReturnDates() {
+    if (!startDate || !startTime || !duration) return;
+
+    const start = new Date(`${startDate}T${startTime}`);
+    const end = new Date(start);
+
+    // Calculate end date based on duration
+    switch (duration) {
+      case '1h':
+        end.setHours(end.getHours() + 1);
+        break;
+      case '4h':
+        end.setHours(end.getHours() + 4);
+        break;
+      case '1d':
+        end.setDate(end.getDate() + 1);
+        break;
+      case '2d':
+        end.setDate(end.getDate() + 2);
+        break;
+      case '1w':
+        end.setDate(end.getDate() + 7);
+        break;
+      case '2w':
+        end.setDate(end.getDate() + 14);
+        break;
+      case '3w':
+        end.setDate(end.getDate() + 21);
+        break;
+      case '1m':
+        end.setMonth(end.getMonth() + 1);
+        break;
+    }
+
+    endDateTime = end.toISOString();
+
+    // Calculate return date based on business rules
+    const returnDate = calculateReturnDate(end);
+    returnDateTime = returnDate.toISOString();
+
+    // Update combined startDateTime
+    startDateTime = start.toISOString();
+
+    // Dispatch the change event
+    dispatch('dateTimeChanged', {
+      startDateTime,
+      endDateTime,
+      returnDateTime,
+      duration,
+    });
+  }
+
+  function calculateReturnDate(endDate: Date): Date {
+    const returnDate = new Date(endDate);
+    const dayOfWeek = returnDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+    // If end date is Friday (5) or weekend (0 = Sunday, 6 = Saturday)
+    if (dayOfWeek === 5 || dayOfWeek === 0 || dayOfWeek === 6) {
+      // Set to next Monday
+      const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+      returnDate.setDate(returnDate.getDate() + daysUntilMonday);
+      returnDate.setHours(9, 0, 0, 0); // 9:00 AM
+    }
+    // For other days (Monday-Thursday), return date stays the same
+
+    return returnDate;
+  }
+
+  function validateInputs() {
+    errors = [];
+
+    if (startDate && startTime) {
+      const selectedDateTime = new Date(`${startDate}T${startTime}`);
+      const now = new Date();
+
+      // Check if date is in the past
+      if (selectedDateTime < now) {
+        errors.push('Start date and time cannot be in the past');
+      }
+    }
+
+    if (startDate && !startTime) {
+      errors.push('Start time is required when date is selected');
+    }
+
+    if (startTime && !startDate) {
+      errors.push('Start date is required when time is selected');
+    }
+
+    if ((startDate || startTime) && !duration) {
+      errors.push('Duration is required');
+    }
+  }
+
+
+  function formatDateTime(isoString: string): string {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function formatReturnDate(isoString: string): string {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const endDate = new Date(endDateTime);
+    
+    // Check if return date is different from end date
+    const isDifferent = date.toDateString() !== endDate.toDateString() || 
+                       date.getHours() !== endDate.getHours();
+    
+    const formatted = formatDateTime(isoString);
+    return isDifferent ? `${formatted} (adjusted for weekend/Friday rule)` : formatted;
+  }
+
+  // Get minimum date (today)
+  function getMinDate(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  // Get minimum time for today
+  function getMinTime(): string {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    
+    if (startDate === today) {
+      // If selected date is today, minimum time is current time
+      return now.toTimeString().slice(0, 5);
+    }
+    return '00:00';
+  }
+</script>
+
+<div class="datetime-picker">
+  <div class="form-row">
+    <div class="form-group">
+      <label for="start-date" class="form-label">
+        Start Date <span class="required">*</span>
+      </label>
+      <input
+        id="start-date"
+        type="date"
+        bind:value={startDate}
+        min={getMinDate()}
+        {disabled}
+        class="form-input"
+        class:error={errors.some(e => e.includes('date'))}
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="start-time" class="form-label">
+        Start Time <span class="required">*</span>
+      </label>
+      <input
+        id="start-time"
+        type="time"
+        bind:value={startTime}
+        min={getMinTime()}
+        {disabled}
+        class="form-input"
+        class:error={errors.some(e => e.includes('time'))}
+      />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="duration" class="form-label">
+      Duration <span class="required">*</span>
+    </label>
+    <select
+      id="duration"
+      bind:value={duration}
+      {disabled}
+      class="form-input"
+      class:error={errors.some(e => e.includes('Duration'))}
+    >
+      {#each durationOptions as option}
+        <option value={option.value}>{option.label}</option>
+      {/each}
+    </select>
+  </div>
+
+  {#if endDateTime}
+    <div class="calculated-dates">
+      <div class="date-info">
+        <span class="date-label">End Date & Time:</span>
+        <span class="date-value">{formatDateTime(endDateTime)}</span>
+      </div>
+      
+      {#if returnDateTime}
+        <div class="date-info return-date">
+          <span class="date-label">Return Date & Time:</span>
+          <span class="date-value">{formatReturnDate(returnDateTime)}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
+  {#if errors.length > 0}
+    <div class="errors">
+      {#each errors as error}
+        <ErrorMessage message={error} />
+      {/each}
+    </div>
+  {/if}
+</div>
+
+<style>
+  .datetime-picker {
+    margin-bottom: 1rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .required {
+    color: #ef4444;
+  }
+
+  .form-input {
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    background-color: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .form-input:disabled {
+    background-color: #f9fafb;
+    color: #6b7280;
+    cursor: not-allowed;
+  }
+
+  .form-input.error {
+    border-color: #ef4444;
+  }
+
+  .form-input.error:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  select.form-input {
+    cursor: pointer;
+  }
+
+  select.form-input:disabled {
+    cursor: not-allowed;
+  }
+
+  .calculated-dates {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+  }
+
+  .date-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .date-info:last-child {
+    margin-bottom: 0;
+  }
+
+  .date-label {
+    font-weight: 600;
+    color: #4b5563;
+    font-size: 0.875rem;
+  }
+
+  .date-value {
+    color: #1f2937;
+    font-size: 0.875rem;
+  }
+
+  .return-date .date-value {
+    color: #059669;
+    font-weight: 500;
+  }
+
+  .errors {
+    margin-top: 0.5rem;
+  }
+
+  .errors :global(.error-display) {
+    margin-bottom: 0.5rem;
+  }
+
+  .errors :global(.error-display:last-child) {
+    margin-bottom: 0;
+  }
+
+  /* Responsive design */
+  @media (max-width: 640px) {
+    .form-row {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .date-info {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+  }
+</style>
