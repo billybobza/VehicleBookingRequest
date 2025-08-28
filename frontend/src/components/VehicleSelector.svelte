@@ -3,6 +3,7 @@
   import { apiService, type Vehicle, type AvailableVehicle } from '../services/api';
   import LoadingSpinner from './LoadingSpinner.svelte';
   import ErrorMessage from './ErrorMessage.svelte';
+  import { setLoading } from '../stores/ui';
 
   // Props
   export let selectedVehicleId: number | null = null;
@@ -48,16 +49,25 @@
   async function loadVehicles() {
     loading = true;
     error = null;
+    setLoading('vehicles', true);
 
-    const response = await apiService.getVehicles();
-    
-    if (response.error) {
-      error = response.error.message;
-    } else if (response.data) {
-      vehicles = response.data;
+    try {
+      const response = await apiService.getVehicles();
+      
+      if (response.error) {
+        error = `Failed to load vehicles: ${response.error.message}`;
+      } else if (response.data) {
+        vehicles = response.data;
+        if (vehicles.length === 0) {
+          error = 'No vehicles are currently available in the system.';
+        }
+      }
+    } catch (err) {
+      error = 'Unable to connect to the server. Please check your connection and try again.';
+    } finally {
+      loading = false;
+      setLoading('vehicles', false);
     }
-
-    loading = false;
   }
 
   async function loadAvailableVehicles() {
@@ -65,17 +75,24 @@
 
     loading = true;
     error = null;
+    setLoading('available-vehicles', true);
 
-    const response = await apiService.getAvailableVehicles(startDate, endDate);
-    
-    if (response.error) {
-      error = response.error.message;
-      showAvailableOnly = false; // Fall back to showing all vehicles
-    } else if (response.data) {
-      availableVehicles = response.data;
+    try {
+      const response = await apiService.getAvailableVehicles(startDate, endDate);
+      
+      if (response.error) {
+        error = `Failed to check availability: ${response.error.message}`;
+        showAvailableOnly = false; // Fall back to showing all vehicles
+      } else if (response.data) {
+        availableVehicles = response.data;
+      }
+    } catch (err) {
+      error = 'Unable to check vehicle availability. Please try again.';
+      showAvailableOnly = false;
+    } finally {
+      loading = false;
+      setLoading('available-vehicles', false);
     }
-
-    loading = false;
   }
 
 
@@ -118,6 +135,9 @@
       bind:value={selectedVehicleId}
       {disabled}
       class:loading
+      aria-describedby="vehicle-help"
+      aria-invalid={error ? 'true' : 'false'}
+      aria-required="true"
     >
       <option value="">
         {loading ? 'Loading vehicles...' : 'Choose a vehicle'}
@@ -137,21 +157,25 @@
     {/if}
   </div>
 
-  {#if error}
-    <ErrorMessage message={error} />
-  {/if}
-
-  {#if showAvailableOnly && availableVehicles.length === 0 && !loading && !error}
-    <div class="no-vehicles">
-      No vehicles available for the selected dates. Try different dates or show all vehicles.
-    </div>
-  {/if}
-
-  {#if displayVehicles.length === 0 && !loading && !error}
-    <div class="no-vehicles">
-      No vehicles found. Please contact your administrator.
-    </div>
-  {/if}
+  <div id="vehicle-help" class="field-help">
+    {#if error}
+      <ErrorMessage message={error} type="error" />
+    {:else if showAvailableOnly && availableVehicles.length === 0 && !loading}
+      <ErrorMessage 
+        message="No vehicles available for the selected dates. Try different dates or show all vehicles." 
+        type="warning" 
+      />
+    {:else if displayVehicles.length === 0 && !loading}
+      <ErrorMessage 
+        message="No vehicles found. Please contact your administrator." 
+        type="warning" 
+      />
+    {:else if showAvailableOnly}
+      <span class="field-hint">Showing only vehicles available for your selected dates</span>
+    {:else}
+      <span class="field-hint">Select a vehicle from the list</span>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -228,14 +252,14 @@
     pointer-events: none;
   }
 
-  .no-vehicles {
+  .field-help {
     margin-top: 0.5rem;
-    padding: 0.75rem;
-    background-color: #fef3c7;
-    border: 1px solid #f59e0b;
-    border-radius: 0.375rem;
-    color: #92400e;
-    font-size: 0.875rem;
+  }
+
+  .field-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-style: italic;
   }
 
   /* Responsive design */

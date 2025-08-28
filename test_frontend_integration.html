@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .loading {
+            color: #6c757d;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Car Booking System - Frontend Integration Test</h1>
+    
+    <div class="test-container">
+        <h2>API Integration Tests</h2>
+        <p>This page tests the frontend's ability to communicate with the backend API.</p>
+        
+        <button onclick="runAllTests()" id="runAllBtn">Run All Tests</button>
+        <button onclick="clearResults()" id="clearBtn">Clear Results</button>
+        
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let testResults = [];
+
+        function addResult(test, success, message, data = null) {
+            const result = {
+                test,
+                success,
+                message,
+                data,
+                timestamp: new Date().toISOString()
+            };
+            testResults.push(result);
+            displayResult(result);
+        }
+
+        function displayResult(result) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${result.success ? 'success' : 'error'}`;
+            
+            let content = `<strong>${result.test}:</strong> ${result.message}`;
+            if (result.data) {
+                content += `<pre>${JSON.stringify(result.data, null, 2)}</pre>`;
+            }
+            
+            resultDiv.innerHTML = content;
+            resultsDiv.appendChild(resultDiv);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+            testResults = [];
+        }
+
+        async function testBackendHealth() {
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'healthy') {
+                    addResult('Backend Health Check', true, 'Backend is healthy', data);
+                    return true;
+                } else {
+                    addResult('Backend Health Check', false, 'Backend is not healthy', data);
+                    return false;
+                }
+            } catch (error) {
+                addResult('Backend Health Check', false, `Failed to connect to backend: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function testGetVehicles() {
+            try {
+                const response = await fetch(`${API_BASE}/vehicles/`);
+                const data = await response.json();
+                
+                if (response.ok && Array.isArray(data) && data.length > 0) {
+                    addResult('Get Vehicles', true, `Retrieved ${data.length} vehicles`, data.slice(0, 2));
+                    return data;
+                } else {
+                    addResult('Get Vehicles', false, 'Failed to get vehicles or no vehicles found', data);
+                    return null;
+                }
+            } catch (error) {
+                addResult('Get Vehicles', false, `Error getting vehicles: ${error.message}`);
+                return null;
+            }
+        }
+
+        async function testGetAvailableVehicles() {
+            try {
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() + 7);
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + 1);
+                
+                const startDateStr = startDate.toISOString().split('T')[0];
+                const endDateStr = endDate.toISOString().split('T')[0];
+                
+                const response = await fetch(`${API_BASE}/vehicles/available?start_date=${startDateStr}&end_date=${endDateStr}`);
+                const data = await response.json();
+                
+                if (response.ok && Array.isArray(data)) {
+                    addResult('Get Available Vehicles', true, `Found ${data.length} available vehicles for ${startDateStr} to ${endDateStr}`, data.slice(0, 2));
+                    return data;
+                } else {
+                    addResult('Get Available Vehicles', false, 'Failed to get available vehicles', data);
+                    return null;
+                }
+            } catch (error) {
+                addResult('Get Available Vehicles', false, `Error getting available vehicles: ${error.message}`);
+                return null;
+            }
+        }
+
+        async function testCreateBooking(vehicles) {
+            if (!vehicles || vehicles.length === 0) {
+                addResult('Create Booking', false, 'No vehicles available for booking test');
+                return null;
+            }
+
+            try {
+                const vehicle = vehicles[0];
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() + 10);
+                const startDateTime = new Date(startDate);
+                startDateTime.setHours(9, 0, 0, 0);
+                const endDateTime = new Date(startDate);
+                endDateTime.setHours(17, 0, 0, 0);
+                
+                const bookingData = {
+                    vehicle_id: vehicle.id,
+                    start_datetime: startDateTime.toISOString(),
+                    end_datetime: endDateTime.toISOString(),
+                    reason: 'Frontend integration test booking',
+                    estimated_mileage: 100
+                };
+                
+                const response = await fetch(`${API_BASE}/bookings/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.id) {
+                    addResult('Create Booking', true, `Successfully created booking #${data.id}`, {
+                        id: data.id,
+                        vehicle: data.vehicle,
+                        start_datetime: data.start_datetime,
+                        end_datetime: data.end_datetime,
+                        return_datetime: data.return_datetime,
+                        status: data.status
+                    });
+                    return data;
+                } else {
+                    addResult('Create Booking', false, 'Failed to create booking', data);
+                    return null;
+                }
+            } catch (error) {
+                addResult('Create Booking', false, `Error creating booking: ${error.message}`);
+                return null;
+            }
+        }
+
+        async function testGetBooking(booking) {
+            if (!booking || !booking.id) {
+                addResult('Get Booking', false, 'No booking ID available for retrieval test');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/bookings/${booking.id}`);
+                const data = await response.json();
+                
+                if (response.ok && data.id === booking.id) {
+                    addResult('Get Booking', true, `Successfully retrieved booking #${data.id}`, {
+                        id: data.id,
+                        reason: data.reason,
+                        estimated_mileage: data.estimated_mileage,
+                        status: data.status
+                    });
+                } else {
+                    addResult('Get Booking', false, 'Failed to retrieve booking', data);
+                }
+            } catch (error) {
+                addResult('Get Booking', false, `Error retrieving booking: ${error.message}`);
+            }
+        }
+
+        async function testReturnDateCalculation(vehicles) {
+            if (!vehicles || vehicles.length === 0) {
+                addResult('Return Date Calculation', false, 'No vehicles available for return date test');
+                return;
+            }
+
+            try {
+                // Test Friday return (should return Monday)
+                const friday = new Date();
+                friday.setDate(friday.getDate() + 14);
+                
+                // Adjust to Friday
+                while (friday.getDay() !== 5) {
+                    friday.setDate(friday.getDate() + 1);
+                }
+                
+                const startDateTime = new Date(friday);
+                startDateTime.setHours(9, 0, 0, 0);
+                const endDateTime = new Date(friday);
+                endDateTime.setHours(17, 0, 0, 0);
+                
+                const bookingData = {
+                    vehicle_id: vehicles[1 % vehicles.length].id,
+                    start_datetime: startDateTime.toISOString(),
+                    end_datetime: endDateTime.toISOString(),
+                    reason: 'Friday return date test',
+                    estimated_mileage: 50
+                };
+                
+                const response = await fetch(`${API_BASE}/bookings/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.id) {
+                    const returnDate = new Date(data.return_datetime);
+                    const isMonday = returnDate.getDay() === 1;
+                    const is9AM = returnDate.getHours() === 9;
+                    
+                    if (isMonday && is9AM) {
+                        addResult('Return Date Calculation', true, `Friday booking correctly returns on Monday at 9 AM: ${returnDate.toISOString()}`, {
+                            end_datetime: data.end_datetime,
+                            return_datetime: data.return_datetime,
+                            day_of_week: returnDate.toLocaleDateString('en-US', { weekday: 'long' }),
+                            time: returnDate.toLocaleTimeString()
+                        });
+                    } else {
+                        addResult('Return Date Calculation', false, `Friday booking return date incorrect: ${returnDate.toISOString()}`, {
+                            expected: 'Monday 9:00 AM',
+                            actual: `${returnDate.toLocaleDateString('en-US', { weekday: 'long' })} ${returnDate.toLocaleTimeString()}`
+                        });
+                    }
+                } else {
+                    addResult('Return Date Calculation', false, 'Failed to create Friday booking for return date test', data);
+                }
+            } catch (error) {
+                addResult('Return Date Calculation', false, `Error testing return date calculation: ${error.message}`);
+            }
+        }
+
+        async function testErrorHandling() {
+            try {
+                // Test invalid vehicle ID
+                const bookingData = {
+                    vehicle_id: 99999,
+                    start_datetime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                    end_datetime: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+                    reason: 'Error handling test',
+                    estimated_mileage: 100
+                };
+                
+                const response = await fetch(`${API_BASE}/bookings/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(bookingData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.status === 404) {
+                    addResult('Error Handling', true, 'Invalid vehicle ID correctly returned 404 error', {
+                        status: response.status,
+                        error: data
+                    });
+                } else {
+                    addResult('Error Handling', false, `Expected 404 for invalid vehicle, got ${response.status}`, data);
+                }
+            } catch (error) {
+                addResult('Error Handling', false, `Error testing error handling: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            const runBtn = document.getElementById('runAllBtn');
+            runBtn.disabled = true;
+            runBtn.textContent = 'Running Tests...';
+            
+            clearResults();
+            
+            addResult('Test Suite', true, 'Starting frontend integration tests...', {
+                timestamp: new Date().toISOString(),
+                backend_url: API_BASE
+            });
+            
+            // Test 1: Backend Health
+            const isHealthy = await testBackendHealth();
+            if (!isHealthy) {
+                runBtn.disabled = false;
+                runBtn.textContent = 'Run All Tests';
+                return;
+            }
+            
+            // Test 2: Get Vehicles
+            const vehicles = await testGetVehicles();
+            
+            // Test 3: Get Available Vehicles
+            const availableVehicles = await testGetAvailableVehicles();
+            
+            // Test 4: Create Booking
+            const booking = await testCreateBooking(availableVehicles || vehicles);
+            
+            // Test 5: Get Booking
+            await testGetBooking(booking);
+            
+            // Test 6: Return Date Calculation
+            await testReturnDateCalculation(vehicles);
+            
+            // Test 7: Error Handling
+            await testErrorHandling();
+            
+            // Summary
+            const successCount = testResults.filter(r => r.success).length;
+            const totalCount = testResults.length;
+            
+            if (successCount === totalCount) {
+                addResult('Test Suite Complete', true, `All ${successCount} tests passed! ✅`, {
+                    passed: successCount,
+                    total: totalCount,
+                    success_rate: '100%'
+                });
+            } else {
+                addResult('Test Suite Complete', false, `${successCount}/${totalCount} tests passed`, {
+                    passed: successCount,
+                    failed: totalCount - successCount,
+                    total: totalCount,
+                    success_rate: `${Math.round((successCount / totalCount) * 100)}%`
+                });
+            }
+            
+            runBtn.disabled = false;
+            runBtn.textContent = 'Run All Tests';
+        }
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(runAllTests, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -9,6 +9,12 @@
   // Local state
   let startDate: string = '';
   let startTime: string = '';
+  let validationErrors: string[] = [];
+
+  // Get current date and time for validation
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const currentTime = now.toTimeString().slice(0, 5);
 
   // Event dispatcher
   const dispatch = createEventDispatcher<{
@@ -20,18 +26,78 @@
     };
   }>();
 
-  // Simple reactive calculation
-  $: if (startDate && startTime && duration) {
-    const start = new Date(`${startDate}T${startTime}`);
-    startDateTime = start.toISOString();
+  // Validation and calculation
+  $: {
+    validationErrors = [];
     
-    // Dispatch simple event for now
-    dispatch('dateTimeChanged', {
-      startDateTime: startDateTime,
-      endDateTime: startDateTime, // placeholder
-      returnDateTime: startDateTime, // placeholder  
-      duration: duration
-    });
+    if (startDate && startTime && duration) {
+      const start = new Date(`${startDate}T${startTime}`);
+      
+      // Validate start date/time is not in the past
+      if (start < now) {
+        validationErrors.push('Start date and time cannot be in the past');
+      }
+      
+      // Calculate end date/time based on duration
+      let end = new Date(start);
+      let returnDate = new Date(start);
+      
+      switch (duration) {
+        case '1h':
+          end.setHours(end.getHours() + 1);
+          returnDate = new Date(end);
+          break;
+        case '4h':
+          end.setHours(end.getHours() + 4);
+          returnDate = new Date(end);
+          break;
+        case '1d':
+          end.setDate(end.getDate() + 1);
+          returnDate = calculateReturnDate(end);
+          break;
+        case '2d':
+          end.setDate(end.getDate() + 2);
+          returnDate = calculateReturnDate(end);
+          break;
+        case '1w':
+          end.setDate(end.getDate() + 7);
+          returnDate = calculateReturnDate(end);
+          break;
+        default:
+          validationErrors.push('Please select a valid duration');
+          break;
+      }
+      
+      if (validationErrors.length === 0 && duration !== '') {
+        startDateTime = start.toISOString();
+        
+        dispatch('dateTimeChanged', {
+          startDateTime: start.toISOString(),
+          endDateTime: end.toISOString(),
+          returnDateTime: returnDate.toISOString(),
+          duration: duration
+        });
+      }
+    }
+  }
+
+  function calculateReturnDate(endDate: Date): Date {
+    const dayOfWeek = endDate.getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
+    
+    if (dayOfWeek === 5) { // Friday
+      const monday = new Date(endDate);
+      monday.setDate(monday.getDate() + 3); // Add 3 days to get to Monday
+      monday.setHours(9, 0, 0, 0); // Set to 9:00 AM
+      return monday;
+    } else if (dayOfWeek === 6 || dayOfWeek === 0) { // Saturday or Sunday
+      const monday = new Date(endDate);
+      const daysToAdd = dayOfWeek === 6 ? 2 : 1; // Saturday: add 2, Sunday: add 1
+      monday.setDate(monday.getDate() + daysToAdd);
+      monday.setHours(9, 0, 0, 0); // Set to 9:00 AM
+      return monday;
+    } else {
+      return endDate; // Return same time for weekdays
+    }
   }
 
   // Duration options
@@ -55,9 +121,17 @@
         id="start-date"
         type="date"
         bind:value={startDate}
+        min={today}
         {disabled}
         class="form-input"
+        class:error={validationErrors.some(e => e.includes('date'))}
+        aria-describedby="start-date-help"
+        aria-invalid={validationErrors.some(e => e.includes('date'))}
+        aria-required="true"
       />
+      <div id="start-date-help" class="field-help">
+        <span class="field-hint">Select a date (today or later)</span>
+      </div>
     </div>
 
     <div class="form-group">
@@ -68,9 +142,17 @@
         id="start-time"
         type="time"
         bind:value={startTime}
+        min={startDate === today ? currentTime : ''}
         {disabled}
         class="form-input"
+        class:error={validationErrors.some(e => e.includes('time'))}
+        aria-describedby="start-time-help"
+        aria-invalid={validationErrors.some(e => e.includes('time'))}
+        aria-required="true"
       />
+      <div id="start-time-help" class="field-help">
+        <span class="field-hint">Select a time {startDate === today ? '(current time or later)' : ''}</span>
+      </div>
     </div>
   </div>
 
@@ -83,15 +165,34 @@
       bind:value={duration} 
       {disabled} 
       class="form-input"
+      class:error={validationErrors.some(e => e.includes('duration'))}
+      aria-describedby="duration-help"
+      aria-invalid={validationErrors.some(e => e.includes('duration'))}
+      aria-required="true"
     >
       {#each durationOptions as option}
         <option value={option.value}>{option.label}</option>
       {/each}
     </select>
+    <div id="duration-help" class="field-help">
+      <span class="field-hint">How long do you need the vehicle?</span>
+    </div>
   </div>
 
-  {#if startDate && startTime && duration}
-    <div class="selected-dates">
+  <!-- Validation Errors -->
+  {#if validationErrors.length > 0}
+    <div class="validation-errors" role="alert" aria-live="polite">
+      {#each validationErrors as error}
+        <div class="validation-error">
+          <span class="error-icon" aria-hidden="true">⚠️</span>
+          {error}
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  {#if startDate && startTime && duration && validationErrors.length === 0}
+    <div class="selected-dates" role="region" aria-label="Booking schedule summary">
       <h3>Booking Schedule:</h3>
       <p><strong>Start:</strong> {new Date(`${startDate}T${startTime}`).toLocaleString()}</p>
       <p><strong>Duration:</strong> {durationOptions.find(opt => opt.value === duration)?.label || duration}</p>
@@ -151,6 +252,25 @@
     background-color: #f9fafb;
     color: #6b7280;
     cursor: not-allowed;
+  }
+
+  .form-input.error {
+    border-color: #ef4444;
+  }
+
+  .form-input.error:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  .field-help {
+    margin-top: 0.25rem;
+  }
+
+  .field-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-style: italic;
   }
 
   /* Specific styling for date/time inputs to ensure visibility */
@@ -232,6 +352,32 @@
     margin: 0.25rem 0;
     color: #15803d;
     font-size: 0.875rem;
+  }
+
+  .validation-errors {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-left: 4px solid #ef4444;
+    border-radius: 0.375rem;
+  }
+
+  .validation-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #991b1b;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .validation-error:last-child {
+    margin-bottom: 0;
+  }
+
+  .error-icon {
+    flex-shrink: 0;
   }
 
   /* Responsive design */

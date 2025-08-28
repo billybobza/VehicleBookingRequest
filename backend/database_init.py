@@ -2,6 +2,7 @@ import random
 from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
 from models.database import engine, SessionLocal, create_tables, Vehicle, VehicleAvailability
+from migrations.migration_manager import get_migration_manager
 
 
 def seed_vehicles(db: Session) -> None:
@@ -95,7 +96,7 @@ def seed_availability_data(db: Session) -> None:
 
 
 def initialize_database() -> None:
-    """Initialize the database with tables and seed data"""
+    """Initialize the database with tables, migrations, and seed data"""
     print("Initializing database...")
     
     # Create all tables
@@ -106,6 +107,15 @@ def initialize_database() -> None:
     db = SessionLocal()
     
     try:
+        # Initialize migration tracking
+        print("Setting up database migrations...")
+        migration_manager = get_migration_manager()
+        migration_manager.initialize_schema_version(db)
+        
+        # Display migration status
+        status = migration_manager.get_migration_status(db)
+        print(f"Database schema version: {status['current_version']}")
+        
         # Seed vehicles
         print("Seeding vehicles...")
         seed_vehicles(db)
@@ -115,6 +125,7 @@ def initialize_database() -> None:
         seed_availability_data(db)
         
         print("Database initialization completed successfully!")
+        print(f"Database ready with {status['migration_count']} applied migrations")
         
     except Exception as e:
         print(f"Error during database initialization: {e}")

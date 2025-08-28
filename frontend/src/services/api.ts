@@ -14,6 +14,8 @@ export interface Vehicle {
   registration: string;
   make: string;
   color: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AvailableVehicle extends Vehicle {
@@ -38,10 +40,11 @@ export interface BookingConfirmation {
   estimated_mileage: number;
   status: string;
   created_at: string;
+  vehicle: Vehicle;
 }
 
 class ApiService {
-  private baseUrl = '/api';
+  private baseUrl = 'http://localhost:8000/api';
 
   private async request<T>(
     endpoint: string,

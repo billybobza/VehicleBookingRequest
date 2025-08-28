@@ -5,7 +5,7 @@
   import LoadingSpinner from './LoadingSpinner.svelte';
   import ErrorMessage from './ErrorMessage.svelte';
   import { apiService, type Vehicle, type BookingRequest, type BookingConfirmation } from '../services/api';
-  import { addError } from '../stores/ui';
+  import { addError, addSuccess, setLoading } from '../stores/ui';
 
   // Form state
   let selectedVehicleId: number | null = null;
@@ -26,6 +26,18 @@
 
   // Form validation - only compute validity, don't show errors until needed
   $: isFormValid = validateForm(selectedVehicleId, startDateTime, endDateTime, reason, estimatedMileage);
+  
+  // Debug: Log validation state
+  $: if (typeof window !== 'undefined') {
+    console.log('Form validation state:', {
+      selectedVehicleId,
+      startDateTime,
+      endDateTime,
+      reason: reason?.trim(),
+      estimatedMileage,
+      isFormValid
+    });
+  }
 
   function validateForm(vehicleId: number | null, startDT: string, endDT: string, reasonText: string, mileage: number | null): boolean {
     // Check validity of all form fields
@@ -151,6 +163,7 @@
     }
 
     isSubmitting = true;
+    setLoading('booking-submission', true);
 
     try {
       const bookingRequest: BookingRequest = {
@@ -209,6 +222,7 @@
         });
       } else if (response.data) {
         bookingConfirmation = response.data;
+        addSuccess(`Booking confirmed! Your confirmation number is #${response.data.id}`);
         // Reset form after successful submission
         resetForm();
       } else {
@@ -237,6 +251,7 @@
       });
     } finally {
       isSubmitting = false;
+      setLoading('booking-submission', false);
     }
   }
 
@@ -430,9 +445,12 @@
 
       <!-- Form Errors -->
       {#if showValidationErrors && formErrors.length > 0}
-        <div class="form-errors">
+        <div class="form-errors" role="alert" aria-live="polite">
+          <div class="form-errors-header">
+            <h3>Please correct the following errors:</h3>
+          </div>
           {#each formErrors as error}
-            <ErrorMessage message={error} />
+            <ErrorMessage message={error} type="error" />
           {/each}
         </div>
       {/if}
@@ -589,6 +607,18 @@
 
   .form-errors {
     margin: -0.5rem 0 0 0;
+    padding: 1rem;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 0.5rem;
+    border-left: 4px solid #ef4444;
+  }
+
+  .form-errors-header h3 {
+    margin: 0 0 0.75rem 0;
+    color: #991b1b;
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 
   .form-actions {

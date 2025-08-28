@@ -185,7 +185,7 @@ class TestVehicleEndpoints:
         response = client.get(f"/api/vehicles/available?start_date={start_date}&end_date={end_date}")
         assert response.status_code == 400
         response_data = response.json()
-        assert "Start date must be before or equal to end date" in response_data["message"]
+        assert "Start date must be before or equal to end date" in response_data["error"]["message"]
     
     def test_get_available_vehicles_past_date(self, client, db_session):
         """Test getting available vehicles with past start date"""
@@ -196,7 +196,7 @@ class TestVehicleEndpoints:
         response = client.get(f"/api/vehicles/available?start_date={start_date}&end_date={end_date}")
         assert response.status_code == 400
         response_data = response.json()
-        assert "Start date cannot be in the past" in response_data["message"]
+        assert "Start date cannot be in the past" in response_data["error"]["message"]
     
     def test_get_available_vehicles_missing_parameters(self, client, db_session):
         """Test getting available vehicles without required parameters"""

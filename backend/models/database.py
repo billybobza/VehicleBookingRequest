@@ -69,6 +69,7 @@ class VehicleAvailability(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     is_available = Column(Boolean, default=True, nullable=False)
+    reason = Column(String(200), nullable=True)  # Reason for unavailability (maintenance, etc.)
     
     # Relationships
     vehicle = relationship("Vehicle", back_populates="availability_records")

@@ -70,6 +70,31 @@ The API will be available at http://localhost:8000
 
 The frontend will be available at http://localhost:5173
 
+## Database Setup
+
+The database is automatically initialized when you start the backend server. For manual database management:
+
+```bash
+cd backend
+
+# Check database status
+python manage_db.py status
+
+# Initialize database manually
+python manage_db.py init
+
+# List all vehicles
+python manage_db.py vehicles
+
+# Check vehicle availability for date range
+python manage_db.py availability 2024-01-15 2024-01-17
+
+# Seed database with initial data
+python manage_db.py seed
+```
+
+For detailed database setup and migration information, see [backend/DATABASE_SETUP.md](backend/DATABASE_SETUP.md).
+
 ## API Documentation
 
 Once the backend is running, visit http://localhost:8000/docs for interactive API documentation.

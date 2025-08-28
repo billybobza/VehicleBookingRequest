@@ -70,7 +70,7 @@ describe('UI Stores', () => {
       expect(get(errors)).toHaveLength(0);
     });
 
-    it('should auto-remove errors after 5 seconds', () => {
+    it('should auto-remove errors after 8 seconds', () => {
       addError({
         code: 'AUTO_REMOVE',
         message: 'This should auto-remove'
@@ -78,8 +78,8 @@ describe('UI Stores', () => {
 
       expect(get(errors)).toHaveLength(1);
 
-      // Fast-forward 5 seconds
-      vi.advanceTimersByTime(5000);
+      // Fast-forward 8 seconds
+      vi.advanceTimersByTime(8000);
 
       expect(get(errors)).toHaveLength(0);
     });
