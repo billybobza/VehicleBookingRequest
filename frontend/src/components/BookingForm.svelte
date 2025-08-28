@@ -34,6 +34,33 @@
     const hasReason = !!(reasonText && reasonText.trim().length > 0);
     const hasMileage = mileage !== null && mileage !== undefined && mileage > 0;
     
+    // Additional validation for date/time
+    if (hasDateTime) {
+      const startDate = new Date(startDT);
+      const endDate = new Date(endDT);
+      const now = new Date();
+      
+      // Check if start date is in the past
+      if (startDate < now) {
+        return false;
+      }
+      
+      // Check if end date is after start date
+      if (endDate <= startDate) {
+        return false;
+      }
+    }
+    
+    // Additional validation for reason length
+    if (hasReason && reasonText.trim().length > 500) {
+      return false;
+    }
+    
+    // Additional validation for mileage range
+    if (hasMileage && (mileage > 10000)) {
+      return false;
+    }
+    
     return hasVehicle && hasDateTime && hasReason && hasMileage;
   }
 
@@ -48,11 +75,27 @@
     // Date/time validation
     if (!startDateTime || !endDateTime) {
       errors.push('Please select start date, time, and duration');
+    } else {
+      const startDate = new Date(startDateTime);
+      const endDate = new Date(endDateTime);
+      const now = new Date();
+      
+      // Check if start date is in the past
+      if (startDate < now) {
+        errors.push('Start date and time cannot be in the past');
+      }
+      
+      // Check if end date is after start date
+      if (endDate <= startDate) {
+        errors.push('End date and time must be after start date and time');
+      }
     }
 
     // Reason validation
     if (!reason || reason.trim().length === 0) {
       errors.push('Please provide a reason for vehicle usage');
+    } else if (reason.trim().length > 500) {
+      errors.push('Reason must be 500 characters or less');
     }
 
     // Estimated mileage validation
@@ -60,6 +103,8 @@
       errors.push('Please provide estimated mileage');
     } else if (estimatedMileage <= 0) {
       errors.push('Estimated mileage must be a positive number');
+    } else if (estimatedMileage > 10000) {
+      errors.push('Estimated mileage cannot exceed 10,000 miles');
     }
 
     return errors;
@@ -71,6 +116,11 @@
   } else {
     formErrors = [];
   }
+
+  // Real-time validation feedback for individual fields (without showing errors until submit)
+  $: reasonValid = !reason || (reason.trim().length > 0 && reason.trim().length <= 500);
+  $: mileageValid = estimatedMileage === null || estimatedMileage === undefined || (estimatedMileage > 0 && estimatedMileage <= 10000);
+  $: dateTimeValid = !startDateTime || !endDateTime || (new Date(startDateTime) >= new Date() && new Date(endDateTime) > new Date(startDateTime));
 
   function handleVehicleSelected(event: CustomEvent<{ vehicleId: number; vehicle: Vehicle }>) {
     selectedVehicleId = event.detail.vehicleId;
@@ -114,20 +164,76 @@
       const response = await apiService.createBooking(bookingRequest);
 
       if (response.error) {
+        // Provide user-friendly error messages based on error codes
+        let userMessage = response.error.message;
+        
+        switch (response.error.code) {
+          case 'HTTP_400':
+            userMessage = 'Invalid booking data. Please check your inputs and try again.';
+            break;
+          case 'HTTP_404':
+            userMessage = 'The selected vehicle is no longer available. Please choose another vehicle.';
+            break;
+          case 'HTTP_422':
+          case 'VALIDATION_ERROR':
+            userMessage = 'Please check your form inputs. Some fields contain invalid data.';
+            // If we have validation details, show specific field errors
+            if (response.error.details && Array.isArray(response.error.details)) {
+              const fieldErrors = response.error.details.map((detail: any) => {
+                const field = detail.loc ? detail.loc[detail.loc.length - 1] : 'field';
+                return `${field}: ${detail.msg}`;
+              }).join(', ');
+              userMessage += ` Details: ${fieldErrors}`;
+            }
+            break;
+          case 'HTTP_409':
+            userMessage = 'This vehicle is already booked for the selected time period. Please choose different dates or another vehicle.';
+            break;
+          case 'HTTP_500':
+          case 'DATABASE_ERROR':
+          case 'INTERNAL_SERVER_ERROR':
+            userMessage = 'A server error occurred. Please try again later or contact support if the problem persists.';
+            break;
+          case 'NETWORK_ERROR':
+            userMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+            break;
+          default:
+            // Use the original message if we don't have a specific mapping
+            userMessage = response.error.message || 'An unexpected error occurred while processing your booking.';
+        }
+        
         addError({
           code: response.error.code,
-          message: response.error.message,
+          message: userMessage,
           details: response.error.details,
         });
       } else if (response.data) {
         bookingConfirmation = response.data;
         // Reset form after successful submission
         resetForm();
+      } else {
+        // Handle unexpected response format
+        addError({
+          code: 'UNEXPECTED_RESPONSE',
+          message: 'Received an unexpected response from the server. Please try again.',
+        });
       }
     } catch (error) {
+      // Handle network errors and other exceptions
+      let errorMessage = 'Failed to submit booking request. Please try again.';
+      let errorCode = 'SUBMISSION_ERROR';
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+        errorCode = 'NETWORK_ERROR';
+      } else if (error instanceof Error) {
+        errorMessage = `An error occurred: ${error.message}`;
+        errorCode = 'CLIENT_ERROR';
+      }
+      
       addError({
-        code: 'SUBMISSION_ERROR',
-        message: 'Failed to submit booking request. Please try again.',
+        code: errorCode,
+        message: errorMessage,
       });
     } finally {
       isSubmitting = false;
@@ -185,7 +291,14 @@
       <div class="detail-row">
         <span class="detail-label">Vehicle:</span>
         <span class="detail-value">
-          {selectedVehicle ? `${selectedVehicle.registration} - ${selectedVehicle.make} (${selectedVehicle.color})` : 'N/A'}
+          {#if selectedVehicle}
+            <div class="vehicle-details">
+              <div class="vehicle-registration">{selectedVehicle.registration}</div>
+              <div class="vehicle-info">{selectedVehicle.make} • {selectedVehicle.color}</div>
+            </div>
+          {:else}
+            N/A
+          {/if}
         </span>
       </div>
       
@@ -271,9 +384,21 @@
           placeholder="Please describe the purpose of your vehicle usage..."
           disabled={isSubmitting}
           class="form-textarea"
-          class:error={showValidationErrors && formErrors.some(e => e.includes('reason'))}
+          class:error={showValidationErrors && formErrors.some(e => e.includes('reason') || e.includes('Reason'))}
           rows="3"
+          maxlength="500"
+          aria-describedby="reason-help"
+          aria-invalid={showValidationErrors && formErrors.some(e => e.includes('reason') || e.includes('Reason'))}
         ></textarea>
+        <div id="reason-help" class="field-help">
+          {#if reason}
+            <span class="char-count" class:warning={reason.length > 450}>
+              {reason.length}/500 characters
+            </span>
+          {:else}
+            <span class="field-hint">Describe the purpose of your vehicle usage (max 500 characters)</span>
+          {/if}
+        </div>
       </div>
 
       <!-- Estimated Mileage -->
@@ -288,12 +413,18 @@
             bind:value={estimatedMileage}
             placeholder="Enter estimated miles"
             min="1"
+            max="10000"
             step="1"
             disabled={isSubmitting}
             class="form-input"
-            class:error={showValidationErrors && formErrors.some(e => e.includes('mileage'))}
+            class:error={showValidationErrors && formErrors.some(e => e.includes('mileage') || e.includes('Mileage'))}
+            aria-describedby="mileage-help"
+            aria-invalid={showValidationErrors && formErrors.some(e => e.includes('mileage') || e.includes('Mileage'))}
           />
           <span class="input-unit">miles</span>
+        </div>
+        <div id="mileage-help" class="field-help">
+          <span class="field-hint">Enter the estimated miles for your trip (1-10,000 miles)</span>
         </div>
       </div>
 
@@ -437,6 +568,25 @@
     pointer-events: none;
   }
 
+  .field-help {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+
+  .field-hint {
+    color: #6b7280;
+  }
+
+  .char-count {
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .char-count.warning {
+    color: #f59e0b;
+  }
+
   .form-errors {
     margin: -0.5rem 0 0 0;
   }
@@ -568,6 +718,21 @@
     text-transform: capitalize;
     font-weight: 600;
     color: #059669;
+  }
+
+  .vehicle-details {
+    text-align: right;
+  }
+
+  .vehicle-registration {
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .vehicle-info {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.125rem;
   }
 
   .new-booking-btn {
