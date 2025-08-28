@@ -13,51 +13,71 @@
   }
 </script>
 
-<div class="app">
-  <nav class="navbar" role="navigation" aria-label="Main navigation">
-    <div class="nav-container">
-      <div class="nav-brand">
-        <h1>🚗 Car Booking System</h1>
-      </div>
-      
-      <div class="nav-links" role="tablist">
-        <button 
-          class="nav-link {currentPage === 'booking' ? 'active' : ''}"
-          on:click={() => navigateTo('booking')}
-          role="tab"
-          aria-selected={currentPage === 'booking'}
-          aria-controls="main-content"
-          disabled={$globalLoading}
-        >
-          <span aria-hidden="true">📅</span> Book Vehicle
-        </button>
-        <button 
-          class="nav-link {currentPage === 'admin' ? 'active' : ''}"
-          on:click={() => navigateTo('admin')}
-          role="tab"
-          aria-selected={currentPage === 'admin'}
-          aria-controls="main-content"
-          disabled={$globalLoading}
-        >
-          <span aria-hidden="true">🔧</span> Admin Panel
-        </button>
+<div class="min-h-screen bg-gray-50">
+  <!-- Navigation -->
+  <nav class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <!-- Brand -->
+        <div class="flex items-center space-x-3">
+          <div class="bg-primary-600 rounded-lg p-2">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+          </div>
+          <h1 class="text-xl font-bold text-gray-900">Vehicle Booking System</h1>
+        </div>
+        
+        <!-- Navigation Links -->
+        <div class="flex space-x-4">
+          <button 
+            class="{currentPage === 'booking' 
+              ? 'bg-primary-600 text-white border-primary-600' 
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'} 
+              inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            on:click={() => navigateTo('booking')}
+            disabled={$globalLoading}
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V7a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h8m-8 0l-2 9a1 1 0 001 1h8a1 1 0 001-1l-2-9m-8 0V7a2 2 0 012-2h4a2 2 0 012 2v4"></path>
+            </svg>
+            Book Vehicle
+          </button>
+          <button 
+            class="{currentPage === 'admin' 
+              ? 'bg-primary-600 text-white border-primary-600' 
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'} 
+              inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            on:click={() => navigateTo('admin')}
+            disabled={$globalLoading}
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            Admin Panel
+          </button>
+        </div>
       </div>
     </div>
   </nav>
   
-  <main id="main-content" role="main" aria-live="polite">
+  <!-- Main Content -->
+  <main class="container-custom">
     <ErrorDisplay />
     <SuccessDisplay />
     
+    <!-- Global Loading Overlay -->
     {#if $globalLoading}
-      <div class="global-loading-overlay" aria-label="Loading application">
-        <div class="global-loading-content">
-          <div class="loading-spinner"></div>
-          <p>Loading...</p>
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-sm mx-4 text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p class="text-gray-700 font-medium">Loading...</p>
         </div>
       </div>
     {/if}
     
+    <!-- Page Content -->
     {#if currentPage === 'booking'}
       <BookingForm />
     {:else if currentPage === 'admin'}
@@ -67,148 +87,28 @@
 </div>
 
 <style>
-  .app {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+  /* Additional custom styles for enhanced visual appeal */
+  :global(.container-custom) {
+    @apply max-w-6xl mx-auto px-4 py-8;
   }
   
-  .navbar {
-    background: white;
-    border-bottom: 1px solid #e5e7eb;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
-  
-  .nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .nav-brand h1 {
-    margin: 0;
-    color: #2563eb;
-    font-size: 1.5rem;
-  }
-  
-  .nav-links {
-    display: flex;
-    gap: 1rem;
-  }
-  
-  .nav-link {
-    padding: 0.75rem 1.5rem;
-    background: none;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    font-size: 1rem;
-    color: #374151;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .nav-link:hover:not(:disabled) {
-    background: #f3f4f6;
-    border-color: #d1d5db;
-  }
-
-  .nav-link:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-  }
-  
-  .nav-link.active {
-    background: #2563eb;
-    color: white;
-    border-color: #2563eb;
-  }
-
-  .nav-link:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  
-  main {
-    flex: 1;
-    padding: 2rem;
-    background-color: #f5f5f5;
-    position: relative;
-  }
-
-  .global-loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(255, 255, 255, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    backdrop-filter: blur(2px);
-  }
-
-  .global-loading-content {
-    text-align: center;
-    padding: 2rem;
-    background: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  }
-
-  .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #e5e7eb;
-    border-top: 4px solid #3b82f6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 1rem;
-  }
-
-  .global-loading-content p {
-    margin: 0;
-    color: #6b7280;
-    font-weight: 500;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #f5f5f5;
-  }
-
-  :global(*) {
-    box-sizing: border-box;
-  }
-  
+  /* Mobile responsiveness */
   @media (max-width: 768px) {
-    .nav-container {
-      flex-direction: column;
-      gap: 1rem;
-      padding: 1rem;
+    :global(.container-custom) {
+      @apply px-4 py-6;
+    }
+    
+    /* Mobile navigation adjustments */
+    .nav-brand h1 {
+      @apply text-lg;
     }
     
     .nav-links {
-      width: 100%;
-      justify-content: center;
+      @apply flex-col space-y-2 space-x-0;
     }
     
-    main {
-      padding: 1rem;
+    .nav-links button {
+      @apply w-full justify-center;
     }
   }
 </style>

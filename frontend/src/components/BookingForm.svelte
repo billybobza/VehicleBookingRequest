@@ -27,17 +27,7 @@
   // Form validation - only compute validity, don't show errors until needed
   $: isFormValid = validateForm(selectedVehicleId, startDateTime, endDateTime, reason, estimatedMileage);
   
-  // Debug: Log validation state
-  $: if (typeof window !== 'undefined') {
-    console.log('Form validation state:', {
-      selectedVehicleId,
-      startDateTime,
-      endDateTime,
-      reason: reason?.trim(),
-      estimatedMileage,
-      isFormValid
-    });
-  }
+  // Form validation state tracking
 
   function validateForm(vehicleId: number | null, startDT: string, endDT: string, reasonText: string, mileage: number | null): boolean {
     // Check validity of all form fields
@@ -289,185 +279,275 @@
 
 {#if bookingConfirmation}
   <!-- Booking Confirmation Display -->
-  <div class="booking-confirmation">
-    <div class="confirmation-header">
-      <h1>Booking Confirmed!</h1>
-      <div class="confirmation-icon">✓</div>
+  <div class="card max-w-4xl mx-auto">
+    <div class="text-center mb-8">
+      <div class="bg-green-100 rounded-full p-4 w-20 h-20 mx-auto mb-4">
+        <svg class="w-12 h-12 text-green-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-green-600 mb-2">Booking Confirmed!</h1>
+      <p class="text-lg text-gray-600">Your vehicle booking has been successfully submitted.</p>
     </div>
     
-    <div class="confirmation-details">
-      <h2>Booking Details</h2>
+    <div class="bg-gray-50 rounded-lg p-6 mb-8">
+      <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+        <svg class="w-5 h-5 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Booking Details
+      </h2>
       
-      <div class="detail-row">
-        <span class="detail-label">Confirmation Number:</span>
-        <span class="detail-value confirmation-number">#{bookingConfirmation.id}</span>
-      </div>
-      
-      <div class="detail-row">
-        <span class="detail-label">Vehicle:</span>
-        <span class="detail-value">
-          {#if selectedVehicle}
-            <div class="vehicle-details">
-              <div class="vehicle-registration">{selectedVehicle.registration}</div>
-              <div class="vehicle-info">{selectedVehicle.make} • {selectedVehicle.color}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-4">
+          <div class="bg-white p-4 rounded-lg border">
+            <div class="text-sm font-medium text-gray-500 mb-1">Confirmation Number</div>
+            <div class="text-lg font-bold text-primary-600">#{bookingConfirmation.id}</div>
+          </div>
+          
+          <div class="bg-white p-4 rounded-lg border">
+            <div class="text-sm font-medium text-gray-500 mb-1">Vehicle</div>
+            {#if selectedVehicle}
+              <div class="text-lg font-semibold text-gray-900">{selectedVehicle.registration}</div>
+              <div class="text-sm text-gray-600">{selectedVehicle.make} • {selectedVehicle.color}</div>
+            {:else}
+              <div class="text-gray-600">N/A</div>
+            {/if}
+          </div>
+          
+          <div class="bg-white p-4 rounded-lg border">
+            <div class="text-sm font-medium text-gray-500 mb-1">Status</div>
+            <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              {bookingConfirmation.status}
             </div>
-          {:else}
-            N/A
-          {/if}
-        </span>
+          </div>
+        </div>
+        
+        <div class="space-y-4">
+          <div class="bg-white p-4 rounded-lg border">
+            <div class="text-sm font-medium text-gray-500 mb-1">Start Date & Time</div>
+            <div class="text-lg text-gray-900">{formatDateTime(bookingConfirmation.start_datetime)}</div>
+          </div>
+          
+          <div class="bg-white p-4 rounded-lg border">
+            <div class="text-sm font-medium text-gray-500 mb-1">End Date & Time</div>
+            <div class="text-lg text-gray-900">{formatDateTime(bookingConfirmation.end_datetime)}</div>
+          </div>
+          
+          <div class="bg-white p-4 rounded-lg border">
+            <div class="text-sm font-medium text-gray-500 mb-1">Return Date & Time</div>
+            <div class="text-lg text-green-600 font-medium">{formatDateTime(bookingConfirmation.return_datetime)}</div>
+          </div>
+        </div>
       </div>
       
-      <div class="detail-row">
-        <span class="detail-label">Start:</span>
-        <span class="detail-value">{formatDateTime(bookingConfirmation.start_datetime)}</span>
-      </div>
-      
-      <div class="detail-row">
-        <span class="detail-label">End:</span>
-        <span class="detail-value">{formatDateTime(bookingConfirmation.end_datetime)}</span>
-      </div>
-      
-      <div class="detail-row">
-        <span class="detail-label">Return:</span>
-        <span class="detail-value return-date">{formatDateTime(bookingConfirmation.return_datetime)}</span>
-      </div>
-      
-      <div class="detail-row">
-        <span class="detail-label">Reason:</span>
-        <span class="detail-value">{bookingConfirmation.reason}</span>
-      </div>
-      
-      <div class="detail-row">
-        <span class="detail-label">Estimated Mileage:</span>
-        <span class="detail-value">{bookingConfirmation.estimated_mileage} miles</span>
-      </div>
-      
-      <div class="detail-row">
-        <span class="detail-label">Status:</span>
-        <span class="detail-value status">{bookingConfirmation.status}</span>
+      <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-4 rounded-lg border">
+          <div class="text-sm font-medium text-gray-500 mb-1">Reason for Usage</div>
+          <div class="text-gray-900">{bookingConfirmation.reason}</div>
+        </div>
+        
+        <div class="bg-white p-4 rounded-lg border">
+          <div class="text-sm font-medium text-gray-500 mb-1">Estimated Mileage</div>
+          <div class="text-lg font-semibold text-gray-900">{bookingConfirmation.estimated_mileage} miles</div>
+        </div>
       </div>
     </div>
     
-    <button class="new-booking-btn" on:click={startNewBooking}>
-      Make Another Booking
-    </button>
+    <div class="flex justify-center">
+      <button class="btn-secondary" on:click={startNewBooking}>
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Make Another Booking
+      </button>
+    </div>
   </div>
 {:else}
   <!-- Booking Form -->
-  <div class="booking-form-container">
-    <div class="form-header">
-      <h1>Vehicle Booking Request</h1>
-      <p>Complete the form below to request a company vehicle.</p>
+  <div class="card max-w-4xl mx-auto">
+    <div class="text-center mb-8">
+      <div class="bg-primary-100 rounded-full p-4 w-16 h-16 mx-auto mb-4">
+        <svg class="w-8 h-8 text-primary-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Vehicle Booking Request</h1>
+      <p class="text-lg text-gray-600">Complete the form below to request a company vehicle.</p>
     </div>
 
-    <form on:submit={handleSubmit} class="booking-form">
+    <form on:submit={handleSubmit} class="space-y-8">
       <!-- Vehicle Selection -->
-      <VehicleSelector
-        bind:selectedVehicleId
-        startDate={startDateTime ? new Date(startDateTime).toISOString().split('T')[0] : ''}
-        endDate={endDateTime ? new Date(endDateTime).toISOString().split('T')[0] : ''}
-        disabled={isSubmitting}
-        on:vehicleSelected={handleVehicleSelected}
-      />
-      
-      <!-- Selected Vehicle Details -->
-      {#if selectedVehicle}
-        <div class="selected-vehicle">
-          <h3>Selected Vehicle:</h3>
-          <p><strong>Registration:</strong> {selectedVehicle.registration}</p>
-          <p><strong>Make:</strong> {selectedVehicle.make}</p>
-          <p><strong>Color:</strong> {selectedVehicle.color}</p>
-        </div>
-      {/if}
+      <div class="bg-gray-50 rounded-lg p-6 border">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <svg class="w-5 h-5 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          Step 1: Select Vehicle
+        </h2>
+        <VehicleSelector
+          bind:selectedVehicleId
+          startDate={startDateTime ? new Date(startDateTime).toISOString().split('T')[0] : ''}
+          endDate={endDateTime ? new Date(endDateTime).toISOString().split('T')[0] : ''}
+          disabled={isSubmitting}
+          on:vehicleSelected={handleVehicleSelected}
+        />
+        
+        <!-- Selected Vehicle Details -->
+        {#if selectedVehicle}
+          <div class="mt-4 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+            <h3 class="text-lg font-medium text-primary-900 mb-3 flex items-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Selected Vehicle
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <span class="font-medium text-gray-700">Registration:</span>
+                <span class="block text-gray-900 font-semibold">{selectedVehicle.registration}</span>
+              </div>
+              <div>
+                <span class="font-medium text-gray-700">Make:</span>
+                <span class="block text-gray-900">{selectedVehicle.make}</span>
+              </div>
+              <div>
+                <span class="font-medium text-gray-700">Color:</span>
+                <span class="block text-gray-900">{selectedVehicle.color}</span>
+              </div>
+            </div>
+          </div>
+        {/if}
+      </div>
 
       <!-- Date and Time Selection -->
-      <DateTimePicker
-        bind:startDateTime
-        bind:duration
-        disabled={isSubmitting}
-        on:dateTimeChanged={handleDateTimeChanged}
-      />
+      <div class="bg-gray-50 rounded-lg p-6 border">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <svg class="w-5 h-5 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V7a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h8m-8 0l-2 9a1 1 0 001 1h8a1 1 0 001-1l-2-9m-8 0V7a2 2 0 012-2h4a2 2 0 012 2v4"></path>
+          </svg>
+          Step 2: Choose Date & Time
+        </h2>
+        <DateTimePicker
+          bind:startDateTime
+          bind:duration
+          disabled={isSubmitting}
+          on:dateTimeChanged={handleDateTimeChanged}
+        />
+      </div>
 
       <!-- Reason for Usage -->
-      <div class="form-group">
-        <label for="reason" class="form-label">
-          Reason for Usage <span class="required">*</span>
-        </label>
-        <textarea
-          id="reason"
-          bind:value={reason}
-          placeholder="Please describe the purpose of your vehicle usage..."
-          disabled={isSubmitting}
-          class="form-textarea"
-          class:error={showValidationErrors && formErrors.some(e => e.includes('reason') || e.includes('Reason'))}
-          rows="3"
-          maxlength="500"
-          aria-describedby="reason-help"
-          aria-invalid={showValidationErrors && formErrors.some(e => e.includes('reason') || e.includes('Reason'))}
-        ></textarea>
-        <div id="reason-help" class="field-help">
-          {#if reason}
-            <span class="char-count" class:warning={reason.length > 450}>
-              {reason.length}/500 characters
-            </span>
-          {:else}
-            <span class="field-hint">Describe the purpose of your vehicle usage (max 500 characters)</span>
-          {/if}
+      <div class="bg-gray-50 rounded-lg p-6 border">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <svg class="w-5 h-5 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Step 3: Reason for Usage
+        </h2>
+        <div class="space-y-2">
+          <label for="reason" class="block text-sm font-medium text-gray-700">
+            Reason for Usage <span class="text-red-500">*</span>
+          </label>
+          <textarea
+            id="reason"
+            bind:value={reason}
+            placeholder="Please describe the purpose of your vehicle usage..."
+            disabled={isSubmitting}
+            class="form-input-custom resize-none {showValidationErrors && formErrors.some(e => e.includes('reason') || e.includes('Reason')) ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}"
+            rows="4"
+            maxlength="500"
+            aria-describedby="reason-help"
+          ></textarea>
+          <div id="reason-help" class="flex justify-between items-center text-sm">
+            {#if reason}
+              <span class="text-gray-500">
+                {reason.length}/500 characters
+              </span>
+              {#if reason.length > 450}
+                <span class="text-amber-600 font-medium">Character limit approaching</span>
+              {/if}
+            {:else}
+              <span class="text-gray-500">Describe the purpose of your vehicle usage (max 500 characters)</span>
+            {/if}
+          </div>
         </div>
       </div>
 
       <!-- Estimated Mileage -->
-      <div class="form-group">
-        <label for="estimated-mileage" class="form-label">
-          Estimated Mileage <span class="required">*</span>
-        </label>
-        <div class="input-with-unit">
-          <input
-            id="estimated-mileage"
-            type="number"
-            bind:value={estimatedMileage}
-            placeholder="Enter estimated miles"
-            min="1"
-            max="10000"
-            step="1"
-            disabled={isSubmitting}
-            class="form-input"
-            class:error={showValidationErrors && formErrors.some(e => e.includes('mileage') || e.includes('Mileage'))}
-            aria-describedby="mileage-help"
-            aria-invalid={showValidationErrors && formErrors.some(e => e.includes('mileage') || e.includes('Mileage'))}
-          />
-          <span class="input-unit">miles</span>
-        </div>
-        <div id="mileage-help" class="field-help">
-          <span class="field-hint">Enter the estimated miles for your trip (1-10,000 miles)</span>
+      <div class="bg-gray-50 rounded-lg p-6 border">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <svg class="w-5 h-5 text-primary-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          Step 4: Estimated Mileage
+        </h2>
+        <div class="space-y-2">
+          <label for="estimated-mileage" class="block text-sm font-medium text-gray-700">
+            Estimated Mileage <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <input
+              id="estimated-mileage"
+              type="number"
+              bind:value={estimatedMileage}
+              placeholder="Enter estimated miles"
+              min="1"
+              max="10000"
+              step="1"
+              disabled={isSubmitting}
+              class="form-input-custom pr-16 {showValidationErrors && formErrors.some(e => e.includes('mileage') || e.includes('Mileage')) ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}"
+              aria-describedby="mileage-help"
+            />
+            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <span class="text-gray-500 text-sm">miles</span>
+            </div>
+          </div>
+          <div id="mileage-help" class="text-sm text-gray-500">
+            Enter the estimated miles for your trip (1-10,000 miles)
+          </div>
         </div>
       </div>
 
       <!-- Form Errors -->
       {#if showValidationErrors && formErrors.length > 0}
-        <div class="form-errors" role="alert" aria-live="polite">
-          <div class="form-errors-header">
-            <h3>Please correct the following errors:</h3>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4" role="alert" aria-live="polite">
+          <div class="flex items-center mb-3">
+            <svg class="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 class="text-sm font-medium text-red-800">Please correct the following errors:</h3>
           </div>
-          {#each formErrors as error}
-            <ErrorMessage message={error} type="error" />
-          {/each}
+          <div class="space-y-2">
+            {#each formErrors as error}
+              <div class="flex items-start">
+                <svg class="w-4 h-4 text-red-400 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                <span class="text-sm text-red-700">{error}</span>
+              </div>
+            {/each}
+          </div>
         </div>
       {/if}
 
       <!-- Submit Button -->
-      <div class="form-actions">
+      <div class="flex justify-center pt-6">
         <button
           type="submit"
           disabled={!isFormValid || isSubmitting}
-          class="submit-btn"
-          class:loading={isSubmitting}
+          class="btn-primary disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] flex items-center justify-center space-x-2 {isSubmitting ? 'cursor-wait' : ''}"
         >
           {#if isSubmitting}
-            <LoadingSpinner size="small" inline={true} />
-            Submitting Request...
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Submitting Request...</span>
           {:else}
-            Submit Booking Request
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            </svg>
+            <span>Submit Booking Request</span>
           {/if}
         </button>
       </div>
